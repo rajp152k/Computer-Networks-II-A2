@@ -4,12 +4,10 @@ import time
 import _thread
 import os
 
-PACKET_SIZE = 512
 RECEIVER_ADDR = ('localhost', 8080)
 SENDER_ADDR = ('localhost', 9090)
-SLEEP_INTERVAL = 0.05
 TIMEOUT_INTERVAL = 2
-BUFFER_SIZE = 512
+BUFFER_SIZE = 1024
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(SENDER_ADDR)
@@ -25,13 +23,13 @@ packets = dict()
 
 lock = _thread.allocate_lock()
 
+completed = False
+
 # the name of file we want to send, make sure it exists
 filename = "text.txt"
 # get the file size
 filesize = os.path.getsize(filename)
 file = open(filename, "rb")
-
-expected_seq_num = next_seq_num
 
 
 def get_packet(seq_num):
@@ -48,8 +46,7 @@ def get_packet(seq_num):
 
 
 def send(next_packet, seq_num):
-    global next_seq_num
-    if random.randint(0, 2) > 0:
+    if random.randint(0, 100) >= 5:
         # print(
         #     f'Packet Sent with Sequence number is {seq_num,len(next_packet)} at {time.time()}')
         sock.sendto(next_packet.encode(), RECEIVER_ADDR)
@@ -85,9 +82,10 @@ def send_packet(seq_num, is_retransmission):
 
 
 def timer_thread():
-    while True:
+    global completed
+    while not completed:
         if start_time != -1 and time.time() - start_time > TIMEOUT_INTERVAL:
-            # print('Resending')
+            #print(f'Resending {expected_ack_number} at {time.time()}')
             send_packet(expected_ack_number, True)
 
 
@@ -111,6 +109,8 @@ def main_thread():
 
             success = send_packet(None, False)
             if success == False and next_seq_num == expected_ack_number:
+                completed = True  # pylint: disable=unused-variable
+
                 return
 
 
