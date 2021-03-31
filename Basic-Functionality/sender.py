@@ -8,13 +8,13 @@ PACKET_SIZE = 512
 RECEIVER_ADDR = ('localhost', 8080)
 SENDER_ADDR = ('localhost', 9090)
 SLEEP_INTERVAL = 0.05
-TIMEOUT_INTERVAL = 1
+TIMEOUT_INTERVAL = 2
 BUFFER_SIZE = 512
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(SENDER_ADDR)
 
-N = 3 * BUFFER_SIZE
+N = 10 * BUFFER_SIZE
 
 next_seq_num = 0
 expected_ack_number = 0
@@ -30,6 +30,8 @@ filename = "text.txt"
 # get the file size
 filesize = os.path.getsize(filename)
 file = open(filename, "rb")
+
+expected_seq_num = next_seq_num
 
 
 def get_packet(seq_num):
@@ -52,8 +54,8 @@ def send(next_packet, seq_num):
         #     f'Packet Sent with Sequence number is {seq_num,len(next_packet)} at {time.time()}')
         sock.sendto(next_packet.encode(), RECEIVER_ADDR)
     # else:
-    #     print(
-    #         f'Packet with Sequence Number {seq_num} going to Lost at {time.time()}')
+        # print(
+        #     f'Packet with Sequence Number {seq_num} going to Lost at {time.time()}')
 
 
 def send_packet(seq_num, is_retransmission):
