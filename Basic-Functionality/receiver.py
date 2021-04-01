@@ -2,17 +2,15 @@ import socket
 import time
 import random
 
-PACKET_SIZE = 512
+
 RECEIVER_ADDR = ('localhost', 8080)
 SENDER_ADDR = ('localhost', 9090)
-SLEEP_INTERVAL = 0.05
-TIMEOUT_INTERVAL = 0.5
+PACKET_SIZE = 1024 * 11
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(RECEIVER_ADDR)
 
 expected_seq_num = 0
-data = ""
 
 file = open("output", "wb")
 
@@ -42,7 +40,7 @@ def send_ack(SYN_bit, FIN_bit):
 
 
 while True:
-    message, _ = sock.recvfrom(2048)
+    message, _ = sock.recvfrom(PACKET_SIZE)
     packet_length = len(message)
     temp = message.decode('latin-1').split(':')
     SYN_recv = int(temp[0][4])

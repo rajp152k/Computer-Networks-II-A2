@@ -7,12 +7,12 @@ import os
 RECEIVER_ADDR = ('localhost', 8080)
 SENDER_ADDR = ('localhost', 9090)
 TIMEOUT_INTERVAL = 1
-BUFFER_SIZE = 1024
+PACKET_SIZE = 1024 * 10
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(SENDER_ADDR)
 
-N = 50 * BUFFER_SIZE
+N = 5 * PACKET_SIZE
 
 next_seq_num = 0
 expected_ack_number = 0
@@ -20,6 +20,7 @@ rwnd = N
 start_time = -1
 
 packets = dict()
+count = dict()
 
 lock = _thread.allocate_lock()
 
@@ -43,7 +44,7 @@ def get_packet(seq_num, SYN_bit, FIN_bit):
         if str(seq_num) in packets.keys():
             return packets[str(seq_num)]
         else:
-            data = file.read(BUFFER_SIZE)
+            data = file.read(PACKET_SIZE)
             if not data:
                 return None
             data = ("SYN=0:FIN=0:seq=" +
@@ -108,7 +109,9 @@ def main_thread():
         message = message.split(':')
         recv_ack = int(message[2][4:])
         print(f'Received Ack {recv_ack} at {time.time()}')
+
         if recv_ack > expected_ack_number:
+            count[str(recv_ack)] = 1
             expected_ack_number = recv_ack
             if expected_ack_number == next_seq_num:
                 start_time = -1
@@ -118,6 +121,12 @@ def main_thread():
             success = send_packet(None, False)
             if success == False and next_seq_num == expected_ack_number:
                 return
+        else:
+            count[str(recv_ack)] += 1
+            if count[str(recv_ack)] > 3:
+                print(
+                    f'Fast Retransmit {expected_ack_number} at {time.time()}')
+                send_packet(expected_ack_number, True)
 
 
 def connection_establishment():
@@ -133,6 +142,7 @@ def connection_establishment():
     SYN_recv = int(message[0][4])
     recv_ack = int(message[2][4:])
     print(f'Received Ack {recv_ack} at {time.time()}')
+    count[str(recv_ack)] = 1
     if SYN_recv != 1 and next_seq_num != recv_ack:
         return False
     else:
