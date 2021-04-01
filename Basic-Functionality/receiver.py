@@ -5,7 +5,8 @@ import random
 
 RECEIVER_ADDR = ('localhost', 8080)
 SENDER_ADDR = ('localhost', 9090)
-PACKET_SIZE = 1024 * 11
+PACKET_SIZE = 2048
+BUFFER_SIZE = 20 * PACKET_SIZE
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(RECEIVER_ADDR)
@@ -16,21 +17,24 @@ file = open("output", "wb")
 
 packets = dict()
 
+rwnd = BUFFER_SIZE
+
 
 def helper(recv_data, packet_length):
-    global expected_seq_num
+    global expected_seq_num, rwnd
     expected_seq_num += packet_length
     while str(expected_seq_num) in packets.keys():
         next_packet_data, next_packet_length = packets[str(expected_seq_num)]
         recv_data += next_packet_data
         expected_seq_num += next_packet_length
+        rwnd += next_packet_length
     file.write(recv_data)
 
 
 def send_ack(SYN_bit, FIN_bit):
-    global expected_seq_num
+    global expected_seq_num, rwnd
     ack_send = "SYN=" + str(SYN_bit) + ":FIN=" + \
-        str(FIN_bit) + ":ack=" + str(expected_seq_num)
+        str(FIN_bit) + ":rwnd=" + str(rwnd) + ":ack=" + str(expected_seq_num)
     if random.randint(0, 10) > 0:
         print(f'Packet Sent with ACK is {expected_seq_num} at {time.time()}')
         sock.sendto(ack_send.encode(), SENDER_ADDR)
@@ -65,6 +69,7 @@ while True:
             send_ack(0, 0)
         elif recv_seq_num > expected_seq_num:
             packets[str(recv_seq_num)] = (recv_data, packet_length)
+            rwnd -= packet_length
             send_ack(0, 0)
         else:
             send_ack(0, 0)

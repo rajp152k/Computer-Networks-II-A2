@@ -7,16 +7,16 @@ import os
 RECEIVER_ADDR = ('localhost', 8080)
 SENDER_ADDR = ('localhost', 9090)
 TIMEOUT_INTERVAL = 1
-PACKET_SIZE = 1024 * 10
+PACKET_SIZE = 1024
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(SENDER_ADDR)
 
-N = 5 * PACKET_SIZE
+N = 10 * PACKET_SIZE
 
 next_seq_num = 0
 expected_ack_number = 0
-rwnd = N
+rwnd = None
 start_time = -1
 
 packets = dict()
@@ -35,7 +35,7 @@ file = open(filename, "rb")
 
 def get_packet(seq_num, SYN_bit, FIN_bit):
 
-    global next_seq_num, BUFFER_SIZE, packets
+    global next_seq_num, PACKET_SIZE, packets
     if SYN_bit == 1:
         data = ("SYN=1:FIN=0:seq="+str(next_seq_num)).encode()
     elif FIN_bit == 1:
@@ -103,12 +103,14 @@ def main_thread():
     send_packet(None, False)
 
     while True:
-        global start_time, expected_ack_number, completed, next_seq_num
+        global start_time, expected_ack_number, completed, next_seq_num, rwnd
         message, _ = sock.recvfrom(1024)
         message = message.decode()
         message = message.split(':')
-        recv_ack = int(message[2][4:])
-        print(f'Received Ack {recv_ack} at {time.time()}')
+        recv_ack = int(message[3][4:])
+        recv_rwnd = int(message[2][5:])
+        rwnd = recv_rwnd
+        print(f'Received Ack {recv_ack,recv_rwnd} at {time.time()}')
 
         if recv_ack > expected_ack_number:
             count[str(recv_ack)] = 1
@@ -130,7 +132,7 @@ def main_thread():
 
 
 def connection_establishment():
-    global next_seq_num, expected_ack_number, start_time
+    global next_seq_num, expected_ack_number, start_time, rwnd
     first_handshake = get_packet(next_seq_num, 1, 0)
     send(first_handshake, next_seq_num)
     start_time = time.time()  # pylint: disable=unused-variable
@@ -140,8 +142,10 @@ def connection_establishment():
     message = second_handshake.decode()
     message = message.split(':')
     SYN_recv = int(message[0][4])
-    recv_ack = int(message[2][4:])
-    print(f'Received Ack {recv_ack} at {time.time()}')
+    recv_ack = int(message[3][4:])
+    recv_rwnd = int(message[2][5:])
+    rwnd = recv_rwnd
+    print(f'Received Ack {recv_ack,recv_rwnd} at {time.time()}')
     count[str(recv_ack)] = 1
     if SYN_recv != 1 and next_seq_num != recv_ack:
         return False
