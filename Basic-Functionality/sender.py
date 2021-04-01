@@ -3,6 +3,7 @@ import random
 import time
 import _thread
 import os
+import hashlib
 
 RECEIVER_ADDR = ('localhost', 8080)
 SENDER_ADDR = ('localhost', 9090)
@@ -46,9 +47,15 @@ def get_packet(seq_num, SYN_bit, FIN_bit):
 
     global next_seq_num, PACKET_SIZE, packets
     if SYN_bit == 1:
-        data = ("SYN=1:FIN=0:seq="+str(next_seq_num)).encode()
+        temp = ("SYN=1:FIN=0:seq="+str(next_seq_num)).encode()
+        checksum = hashlib.md5(temp)
+        data = ("SYN=1:FIN=0:seq="+str(next_seq_num) +
+                ":checksum="+checksum.hexdigest()).encode()
     elif FIN_bit == 1:
-        data = ("SYN=0:FIN=1:seq="+str(next_seq_num)).encode()
+        temp = ("SYN=0:FIN=1:seq="+str(next_seq_num)).encode()
+        checksum = hashlib.md5(temp)
+        data = ("SYN=0:FIN=1:seq="+str(next_seq_num) +
+                ":checksum="+checksum.hexdigest()).encode()
     else:
         if str(seq_num) in packets.keys():
             return packets[str(seq_num)]
@@ -56,8 +63,11 @@ def get_packet(seq_num, SYN_bit, FIN_bit):
             data = file.read(PACKET_SIZE)
             if not data:
                 return None
-            data = ("SYN=0:FIN=0:seq=" +
+            temp = ("SYN=0:FIN=0:seq=" +
                     str(next_seq_num) + ":data=").encode() + data
+            checksum = hashlib.md5(temp)
+            data = ("SYN=0:FIN=0:seq=" +
+                    str(next_seq_num) + ":checksum=" + checksum.hexdigest() + ":data=").encode() + data
 
     packets[str(next_seq_num)] = data
     return data

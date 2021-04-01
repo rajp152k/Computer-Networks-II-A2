@@ -1,6 +1,7 @@
 import socket
 import time
 import random
+import hashlib
 
 
 RECEIVER_ADDR = ('localhost', 8080)
@@ -63,7 +64,21 @@ while True:
         send_ack(0, 1)
         file.close()
     else:
-        recv_data = message[len(temp[0])+len(temp[1])+len(temp[2])+3+5:]
+        data_start = len(temp[0])+len(temp[1])+len(temp[2])+len(temp[3])+4+5
+        recv_data = message[data_start:]
+
+        checksum_start = len(temp[0])+len(temp[1])+len(temp[2])+2
+        data = message[:checksum_start] + message[data_start-6:]
+        recv_checksum = temp[3][9:]
+        computed_checksum = hashlib.md5(data).hexdigest()
+
+        print(recv_checksum)
+        print(computed_checksum)
+
+        if computed_checksum != recv_checksum:
+            print('Packet is Corrupted')
+            continue
+
         if expected_seq_num == recv_seq_num:
             helper(recv_data, packet_length)
             send_ack(0, 0)
