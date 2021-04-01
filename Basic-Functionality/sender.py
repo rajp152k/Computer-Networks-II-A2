@@ -12,7 +12,16 @@ PACKET_SIZE = 1024
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(SENDER_ADDR)
 
-N = 10 * PACKET_SIZE
+SLOW_START = 1
+CONGESTION_AVOIDANCE = 2
+FAST_RECOVERY = 3
+
+CONGESTION_STATE = SLOW_START
+
+MSS = PACKET_SIZE
+
+cwnd = 1 * MSS
+ssthresh = 64 * 1024
 
 next_seq_num = 0
 expected_ack_number = 0
@@ -74,7 +83,7 @@ def send_packet(seq_num, is_retransmission):
         if next_packet == None:
             lock.release()
             return False
-        while (next_seq_num - expected_ack_number + len(next_packet)) <= rwnd:
+        while (next_seq_num - expected_ack_number + len(next_packet)) <= min(cwnd, rwnd):
             send(next_packet, next_seq_num)
             next_seq_num += len(next_packet)
             next_packet = get_packet(next_seq_num, 0, 0)
@@ -92,18 +101,25 @@ def send_packet(seq_num, is_retransmission):
 
 
 def timer_thread():
-    global completed, expected_ack_number, start_time
+    global completed, expected_ack_number, start_time, ssthresh, cwnd, CONGESTION_STATE
     while not completed:
         if start_time != -1 and time.time() - start_time > TIMEOUT_INTERVAL:
             print(f'Resending {expected_ack_number} at {time.time()}')
             send_packet(expected_ack_number, True)
+            ssthresh = cwnd/2
+            cwnd = 1 * MSS
+            CONGESTION_STATE = SLOW_START
 
 
 def main_thread():
     send_packet(None, False)
 
     while True:
-        global start_time, expected_ack_number, completed, next_seq_num, rwnd
+        global start_time, expected_ack_number, completed, next_seq_num, rwnd, CONGESTION_STATE, cwnd, MSS, ssthresh
+
+        if CONGESTION_STATE == SLOW_START and cwnd >= ssthresh:
+            CONGESTION_STATE = CONGESTION_AVOIDANCE
+
         message, _ = sock.recvfrom(1024)
         message = message.decode()
         message = message.split(':')
@@ -120,15 +136,28 @@ def main_thread():
             else:
                 start_time = time.time()
 
+            if CONGESTION_STATE == SLOW_START:
+                cwnd += MSS
+            elif CONGESTION_STATE == CONGESTION_AVOIDANCE:
+                cwnd += MSS * (MSS/cwnd)
+            else:
+                CONGESTION_STATE = CONGESTION_AVOIDANCE
+                cwnd = ssthresh
+
             success = send_packet(None, False)
             if success == False and next_seq_num == expected_ack_number:
                 return
         else:
             count[str(recv_ack)] += 1
-            if count[str(recv_ack)] > 3:
+            if count[str(recv_ack)] == 3:
+                CONGESTION_STATE = FAST_RECOVERY
+                ssthresh = cwnd / 2
+                cwnd = ssthresh + 3 * MSS
                 print(
                     f'Fast Retransmit {expected_ack_number} at {time.time()}')
                 send_packet(expected_ack_number, True)
+            elif CONGESTION_STATE == FAST_RECOVERY:
+                cwnd += MSS
 
 
 def connection_establishment():
