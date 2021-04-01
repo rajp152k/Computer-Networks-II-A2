@@ -12,7 +12,7 @@ BUFFER_SIZE = 1024
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(SENDER_ADDR)
 
-N = 10 * BUFFER_SIZE
+N = 50 * BUFFER_SIZE
 
 next_seq_num = 0
 expected_ack_number = 0
@@ -26,7 +26,7 @@ lock = _thread.allocate_lock()
 completed = False
 
 # the name of file we want to send, make sure it exists
-filename = "text.txt"
+filename = "test-1MB"
 # get the file size
 filesize = os.path.getsize(filename)
 file = open(filename, "rb")
@@ -37,19 +37,18 @@ def get_packet(seq_num):
         return packets[str(seq_num)]
     else:
         data = file.read(BUFFER_SIZE)
-        data = data.decode()
         if not data:
             return None
-        data = "seq=" + str(next_seq_num) + ":data=" + data
+        data = ("seq=" + str(next_seq_num) + ":data=").encode() + data
         packets[str(next_seq_num)] = data
         return data
 
 
 def send(next_packet, seq_num):
-    if random.randint(0, 100) >= 5:
+    if random.randint(0, 10) > 0:
         # print(
         #     f'Packet Sent with Sequence number is {seq_num,len(next_packet)} at {time.time()}')
-        sock.sendto(next_packet.encode(), RECEIVER_ADDR)
+        sock.sendto(next_packet, RECEIVER_ADDR)
     # else:
         # print(
         #     f'Packet with Sequence Number {seq_num} going to Lost at {time.time()}')
