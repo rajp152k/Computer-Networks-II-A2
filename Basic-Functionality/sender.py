@@ -145,6 +145,7 @@ def close_connection():
     global next_seq_num, expected_ack_number, start_time, completed
     first_request = get_packet(next_seq_num, 0, 1)
     send(first_request, next_seq_num)
+    start_time = time.time()
     next_seq_num += len(first_request)
     message, _ = sock.recvfrom(1024)
     message = message.decode().split(':')
@@ -165,6 +166,7 @@ def close_connection():
 
 
 def TCP():
+    start = time.time()
     success = connection_establishment()
     if success:
         print('Connection Established Successfully:')
@@ -175,6 +177,8 @@ def TCP():
         file.close()
     else:
         print('Connection Establishment Failed')
+    end = time.time()
+    print(f'Total time taken is {end-start}')
 
 
 TCP()
