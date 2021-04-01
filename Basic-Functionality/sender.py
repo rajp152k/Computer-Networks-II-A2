@@ -32,46 +32,54 @@ filesize = os.path.getsize(filename)
 file = open(filename, "rb")
 
 
-def get_packet(seq_num):
-    if str(seq_num) in packets.keys():
-        return packets[str(seq_num)]
+def get_packet(seq_num, SYN_bit):
+
+    global next_seq_num, BUFFER_SIZE, packets
+    if SYN_bit == 1:
+        data = ("SYN=1:seq="+str(next_seq_num)).encode()
     else:
-        data = file.read(BUFFER_SIZE)
-        if not data:
-            return None
-        data = ("seq=" + str(next_seq_num) + ":data=").encode() + data
-        packets[str(next_seq_num)] = data
-        return data
+        if str(seq_num) in packets.keys():
+            return packets[str(seq_num)]
+        else:
+            data = file.read(BUFFER_SIZE)
+            if not data:
+                return None
+            data = ("SYN=0:seq=" +
+                    str(next_seq_num) + ":data=").encode() + data
+
+    packets[str(next_seq_num)] = data
+    return data
 
 
 def send(next_packet, seq_num):
+    global sock
     if random.randint(0, 10) > 0:
         # print(
         #     f'Packet Sent with Sequence number is {seq_num,len(next_packet)} at {time.time()}')
         sock.sendto(next_packet, RECEIVER_ADDR)
     # else:
-        # print(
-        #     f'Packet with Sequence Number {seq_num} going to Lost at {time.time()}')
+    #     print(
+    #         f'Packet with Sequence Number {seq_num} going to Lost at {time.time()}')
 
 
 def send_packet(seq_num, is_retransmission):
     lock.acquire()
-    global start_time
+    global start_time, expected_ack_number
     if not is_retransmission:
         global next_seq_num
-        next_packet = get_packet(next_seq_num)
+        next_packet = get_packet(next_seq_num, 0)
         if next_packet == None:
             lock.release()
             return False
         while (next_seq_num - expected_ack_number + len(next_packet)) <= rwnd:
             send(next_packet, next_seq_num)
             next_seq_num += len(next_packet)
-            next_packet = get_packet(next_seq_num)
+            next_packet = get_packet(next_seq_num, 0)
             if next_packet == None:
                 lock.release()
                 return False
     else:
-        packet_resent = get_packet(seq_num)
+        packet_resent = get_packet(seq_num, 0)
         send(packet_resent, seq_num)
         start_time = time.time()
     if start_time == -1:
@@ -81,7 +89,7 @@ def send_packet(seq_num, is_retransmission):
 
 
 def timer_thread():
-    global completed
+    global completed, expected_ack_number, start_time
     while not completed:
         if start_time != -1 and time.time() - start_time > TIMEOUT_INTERVAL:
             #print(f'Resending {expected_ack_number} at {time.time()}')
@@ -90,14 +98,13 @@ def timer_thread():
 
 def main_thread():
     send_packet(None, False)
-    _thread.start_new_thread(timer_thread, ())
 
     while True:
-        global start_time, expected_ack_number
+        global start_time, expected_ack_number, completed, next_seq_num
         message, _ = sock.recvfrom(1024)
         message = message.decode()
         message = message.split(':')
-        recv_ack = int(message[0][4:])
+        recv_ack = int(message[1][4:])
         #print(f'Received Ack {recv_ack} at {time.time()}')
         if recv_ack > expected_ack_number:
             expected_ack_number = recv_ack
@@ -108,9 +115,39 @@ def main_thread():
 
             success = send_packet(None, False)
             if success == False and next_seq_num == expected_ack_number:
-                completed = True  # pylint: disable=unused-variable
+                completed = True
 
                 return
 
 
-main_thread()
+def connection_establishment():
+    global next_seq_num, expected_ack_number, start_time
+    first_handshake = get_packet(next_seq_num, 1)
+    send(first_handshake, next_seq_num)
+    start_time = time.time()  # pylint: disable=unused-variable
+    _thread.start_new_thread(timer_thread, ())
+    next_seq_num += len(first_handshake)
+    second_handshake, _ = sock.recvfrom(1024)
+    message = second_handshake.decode()
+    message = message.split(':')
+    SYN_recv = int(message[0][4])
+    recv_ack = int(message[1][4:])
+    #print(f'Received Ack {recv_ack} at {time.time()}')
+    if SYN_recv != 1 and next_seq_num != recv_ack:
+        return False
+    else:
+        expected_ack_number = recv_ack
+        start_time = -1
+        return True
+
+
+def TCP():
+    success = connection_establishment()
+    if success:
+        print('Connection Established Successfully:')
+        main_thread()
+    else:
+        print('Connection Establishment Failed')
+
+
+TCP()
