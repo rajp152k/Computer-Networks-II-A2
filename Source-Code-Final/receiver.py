@@ -10,14 +10,14 @@ from datetime import datetime
 now = datetime.now().strftime("%d-%m-%Y__%H:%M:%S")
 (Path()/'receiver_logs').mkdir(exist_ok=True)
 logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        filename=f'./receiver_logs/recvr_{now}.log',
-        filemode='w')
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    filename=f'./receiver_logs/recvr_{now}.log',
+    filemode='w')
 logging.info('receiver initiated')
 
-RECEIVER_ADDR = ('0.0.0.0', 8080)
-SENDER_ADDR = ('0.0.0.0', 9090)
+RECEIVER_ADDR = ('10.0.10.2', 8080)
+SENDER_ADDR = ('10.0.10.1', 9090)
 PACKET_SIZE = 2048
 BUFFER_SIZE = 20 * PACKET_SIZE
 
@@ -34,8 +34,9 @@ packets = dict()
 
 rwnd = BUFFER_SIZE
 
+
 def helper(recv_data, packet_length):
-    global expected_seq_num,rwnd
+    global expected_seq_num, rwnd
     expected_seq_num += packet_length
     while str(expected_seq_num) in packets.keys():
         next_packet_data, next_packet_length = packets[str(expected_seq_num)]
@@ -47,14 +48,15 @@ def helper(recv_data, packet_length):
 
 
 def send_ack(SYN_bit, FIN_bit):
-    global expected_seq_num,rwnd
-    ack_send = "SYN=" + str(SYN_bit) + ":FIN=" + str(FIN_bit) + ":rwnd=" + str(rwnd) + ":ack=" + str(expected_seq_num)
+    global expected_seq_num, rwnd
+    ack_send = "SYN=" + str(SYN_bit) + ":FIN=" + str(FIN_bit) + \
+        ":rwnd=" + str(rwnd) + ":ack=" + str(expected_seq_num)
     sock.sendto(ack_send.encode(), SENDER_ADDR)
     logging.info(f'OUT ==> sending ack no. {expected_seq_num}')
 
 
 while True:
-    try: 
+    try:
         message, _ = sock.recvfrom(PACKET_SIZE)
     except KeyboardInterrupt:
         print(f'KeyboardInterrupt: terminating receiver')
@@ -92,11 +94,11 @@ while True:
 
         if expected_seq_num == recv_seq_num:
             helper(recv_data, packet_length)
-            send_ack(0,0)
+            send_ack(0, 0)
         elif recv_seq_num > expected_seq_num:
             logging.info(f'IO : buffering packet {recv_seq_num}')
             packets[str(recv_seq_num)] = (recv_data, packet_length)
             rwnd -= packet_length
-            send_ack(0,0)
+            send_ack(0, 0)
         else:
-            send_ack(0,0)
+            send_ack(0, 0)

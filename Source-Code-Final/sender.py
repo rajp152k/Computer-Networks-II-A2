@@ -12,14 +12,14 @@ from datetime import datetime
 now = datetime.now().strftime("%d-%m-%Y__%H:%M:%S")
 (Path()/'sender_logs').mkdir(exist_ok=True)
 logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        filename=f'./sender_logs/sendr_{now}.log',
-        filemode='w')
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    filename=f'./sender_logs/sendr_{now}.log',
+    filemode='w')
 logging.info('sender initiated')
 
-RECEIVER_ADDR = ('localhost', 8080)
-SENDER_ADDR = ('localhost', 9090)
+RECEIVER_ADDR = ('10.0.10.2', 8080)
+SENDER_ADDR = ('10.0.10.1', 9090)
 TIMEOUT_INTERVAL = 1
 PACKET_SIZE = 1024
 
@@ -51,6 +51,9 @@ lock = _thread.allocate_lock()
 
 completed = False
 
+total_timeout_packets = 0
+total_fast_retransmit = 0
+
 # the name of file we want to send, make sure it exists
 filename = "test-1MB"
 # get the file size
@@ -58,7 +61,7 @@ filesize = os.path.getsize(filename)
 file = open(filename, "rb")
 
 
-def get_packet(seq_num,SYN_bit,FIN_bit):
+def get_packet(seq_num, SYN_bit, FIN_bit):
     global next_seq_num, PACKET_SIZE, packets
     if SYN_bit == 1:
         temp = ("SYN=1:FIN=0:seq="+str(next_seq_num)).encode()
@@ -90,27 +93,29 @@ def get_packet(seq_num,SYN_bit,FIN_bit):
 
 def send(next_packet, seq_num):
     global sock
-    logging.info(f'OUT ==> sending packet : {next_seq_num}, size :{len(next_packet)}')
+    logging.info(
+        f'OUT ==> sending packet : {next_seq_num}, size :{len(next_packet)}')
     sock.sendto(next_packet, RECEIVER_ADDR)
+
 
 def send_packet(seq_num, is_retransmission):
     lock.acquire()
     global start_time, expected_ack_number
     if not is_retransmission:
         global next_seq_num
-        next_packet = get_packet(next_seq_num,0,0)
+        next_packet = get_packet(next_seq_num, 0, 0)
         if next_packet == None:
             lock.release()
             return False
         while (next_seq_num - expected_ack_number + len(next_packet)) <= min(cwnd, rwnd):
             send(next_packet, next_seq_num)
             next_seq_num += len(next_packet)
-            next_packet = get_packet(next_seq_num,0,0)
+            next_packet = get_packet(next_seq_num, 0, 0)
             if next_packet == None:
                 lock.release()
                 return False
     else:
-        packet_resent = get_packet(seq_num,0,0)
+        packet_resent = get_packet(seq_num, 0, 0)
         logging.info(f'OUT ==> resending packet {seq_num}')
         send(packet_resent, seq_num)
         logging.info('resetting timer')
@@ -123,11 +128,13 @@ def send_packet(seq_num, is_retransmission):
 
 
 def timer_thread():
-    global completed, expected_ack_number, start_time, ssthresh, cwnd, CONGESTION_STATE
+    global completed, expected_ack_number, start_time, ssthresh, cwnd, CONGESTION_STATE, total_timeout_packets
     while not completed:
         if start_time != -1 and time.time() - start_time > TIMEOUT_INTERVAL:
-            logging.info(f'TIMEOUT : Resending packet num : {expected_ack_number}')
+            logging.info(
+                f'TIMEOUT : Resending packet num : {expected_ack_number}')
             send_packet(expected_ack_number, True)
+            total_timeout_packets += 1
             ssthresh = cwnd/2
             cwnd = 1 * MSS
             CONGESTION_STATE = SLOW_START
@@ -137,7 +144,7 @@ def main_thread():
     send_packet(None, False)
 
     while True:
-        global start_time, expected_ack_number, completed, next_seq_num, rwnd, CONGESTION_STATE, cwnd, MSS, ssthresh
+        global start_time, expected_ack_number, completed, next_seq_num, rwnd, CONGESTION_STATE, cwnd, MSS, ssthresh, total_fast_retransmit
 
         if CONGESTION_STATE == SLOW_START and cwnd >= ssthresh:
             CONGESTION_STATE = CONGESTION_AVOIDANCE
@@ -176,8 +183,10 @@ def main_thread():
                     CONGESTION_STATE = FAST_RECOVERY
                     ssthresh = cwnd / 2
                     cwnd = ssthresh + 3 * MSS
-                    logging.info( f'FAST RETRANSMIT {expected_ack_number} at {time.time()}')
+                    logging.info(
+                        f'FAST RETRANSMIT {expected_ack_number} at {time.time()}')
                     send_packet(expected_ack_number, True)
+                    total_fast_retransmit += 1
                 elif CONGESTION_STATE == FAST_RECOVERY:
                     cwnd += MSS
 
@@ -186,7 +195,7 @@ def connection_establishment():
     global next_seq_num, expected_ack_number, start_time, rwnd
     first_handshake = get_packet(next_seq_num, 1, 0)
     send(first_handshake, next_seq_num)
-    start_time = time.time()  
+    start_time = time.time()
     _thread.start_new_thread(timer_thread, ())
     logging.info('timer thread dispatched')
 
@@ -208,6 +217,7 @@ def connection_establishment():
         start_time = -1
         logging.info('CONNECTION ESTABLISHED')
         return True
+
 
 def close_connection():
     global next_seq_num, expected_ack_number, start_time, completed
@@ -233,6 +243,7 @@ def close_connection():
     logging.info('CONNECTION TERMINATED')
     return True
 
+
 def UDP_RDT():
     start = time.time()
     success = connection_establishment()
@@ -248,6 +259,9 @@ def UDP_RDT():
     end = time.time()
     print(f'TIME ELAPSED : {end-start}')
     logging.info(f'TIME ELAPSED : {end-start}')
+    logging.info(f'TOTAL RESENT PACKETS FOR TIMEOUT : {total_timeout_packets}')
+    logging.info(
+        f'TOTAL RESENT PACKETS FOR FAST RETRANSMIT : {total_fast_retransmit}')
 
 
 UDP_RDT()
