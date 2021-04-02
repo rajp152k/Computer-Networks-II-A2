@@ -170,15 +170,16 @@ def main_thread():
             if success == False and next_seq_num == expected_ack_number:
                 return
         else:
-            count[str(recv_ack)] += 1
-            if count[str(recv_ack)] == 3:
-                CONGESTION_STATE = FAST_RECOVERY
-                ssthresh = cwnd / 2
-                cwnd = ssthresh + 3 * MSS
-                logging.info( f'FAST RETRANSMIT {expected_ack_number} at {time.time()}')
-                send_packet(expected_ack_number, True)
-            elif CONGESTION_STATE == FAST_RECOVERY:
-                cwnd += MSS
+            if(str(recv_ack) in count.keys()):
+                count[str(recv_ack)] += 1
+                if count[str(recv_ack)] == 3:
+                    CONGESTION_STATE = FAST_RECOVERY
+                    ssthresh = cwnd / 2
+                    cwnd = ssthresh + 3 * MSS
+                    logging.info( f'FAST RETRANSMIT {expected_ack_number} at {time.time()}')
+                    send_packet(expected_ack_number, True)
+                elif CONGESTION_STATE == FAST_RECOVERY:
+                    cwnd += MSS
 
 
 def connection_establishment():
