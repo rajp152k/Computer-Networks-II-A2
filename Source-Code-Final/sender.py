@@ -5,9 +5,23 @@ import time
 import _thread
 import os
 import hashlib
+import argparse
 
 from pathlib import Path
 from datetime import datetime
+
+parser = argparse.ArgumentParser(description='Sender')
+
+parser.add_argument('-r', '--recvr_addr', default='10.0.10.2', type=str)
+parser.add_argument('-s', '--sendr_addr', default='10.0.10.1', type=str)
+parser.add_argument('--recvr_port', default=8080, type=int)
+parser.add_argument('--sendr_port', default=9090, type=int)
+parser.add_argument('-i', '--input', default='test-1MB', type=str)
+
+args = parser.parse_args()
+
+RECEIVER_ADDR = (args.recvr_addr, args.recvr_port)
+SENDER_ADDR = (args.sendr_addr, args.sendr_port)
 
 now = datetime.now().strftime("%d-%m-%Y__%H:%M:%S")
 (Path()/'sender_logs').mkdir(exist_ok=True)
@@ -18,8 +32,6 @@ logging.basicConfig(
     filemode='w')
 logging.info('sender initiated')
 
-RECEIVER_ADDR = ('10.0.10.2', 8080)
-SENDER_ADDR = ('10.0.10.1', 9090)
 TIMEOUT_INTERVAL = 1
 PACKET_SIZE = 1024
 
@@ -55,7 +67,7 @@ total_timeout_packets = 0
 total_fast_retransmit = 0
 
 # the name of file we want to send, make sure it exists
-filename = "test-1MB"
+filename = args.input
 # get the file size
 filesize = os.path.getsize(filename)
 file = open(filename, "rb")

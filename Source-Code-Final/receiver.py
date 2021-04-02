@@ -3,9 +3,16 @@ import socket
 import time
 import random
 import hashlib
+import argparse
 
 from pathlib import Path
 from datetime import datetime
+
+parser = argparse.ArgumentParser(description='Receiver')
+
+parser.add_argument('-o', '--output', default='outfile', type=str)
+
+args = parser.parse_args()
 
 now = datetime.now().strftime("%d-%m-%Y__%H:%M:%S")
 (Path()/'receiver_logs').mkdir(exist_ok=True)
@@ -28,7 +35,7 @@ logging.info(f'socket bound to {RECEIVER_ADDR}')
 
 expected_seq_num = 0
 
-file = open("output", "wb")
+file = open(args.output, "wb")
 
 packets = dict()
 
