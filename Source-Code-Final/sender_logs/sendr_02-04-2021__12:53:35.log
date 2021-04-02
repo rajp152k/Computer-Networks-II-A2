@@ -1,0 +1,15 @@
+2021-04-02 12:53:35,778 INFO     sender initiated
+2021-04-02 12:53:35,779 INFO     socket bound to ('localhost', 9090)
+2021-04-02 12:53:35,783 INFO     OUT ==> sending packet : 0, size :59
+2021-04-02 12:53:35,784 INFO     timer thread dispatched
+2021-04-02 12:53:35,791 INFO     Received Ack (59, 40960)
+2021-04-02 12:53:35,797 INFO     CONNECTION ESTABLISHED
+2021-04-02 12:53:35,797 INFO     TIMEOUT : Resending packet num : 59
+2021-04-02 12:53:35,798 INFO     starting timer
+2021-04-02 12:53:35,799 INFO     OUT ==> resending packet 59
+2021-04-02 12:53:35,799 INFO     OUT ==> sending packet : 59, size :1090
+2021-04-02 12:53:35,801 INFO     resetting timer
+2021-04-02 12:53:35,809 INFO     IN <== ACK NO : 1149
+2021-04-02 12:53:35,815 INFO     OUT ==> sending packet : 59, size :1090
+2021-04-02 12:53:35,837 INFO     OUT ==> sending packet : 1149, size :1092
+2021-04-02 12:53:35,866 INFO     IN <== ACK NO : 1149

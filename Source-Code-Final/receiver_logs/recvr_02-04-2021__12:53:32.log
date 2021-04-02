@@ -1,0 +1,11 @@
+2021-04-02 12:53:32,382 INFO     receiver initiated
+2021-04-02 12:53:32,383 INFO     socket bound to ('0.0.0.0', 8080)
+2021-04-02 12:53:35,785 INFO     OUT ==> sending ack no. 59
+2021-04-02 12:53:35,801 INFO     IN <== received packet num 59
+2021-04-02 12:53:35,803 INFO     IO : 1149B written on file till now
+2021-04-02 12:53:35,804 INFO     OUT ==> sending ack no. 1149
+2021-04-02 12:53:35,826 INFO     IN <== received packet num 59
+2021-04-02 12:53:35,827 INFO     OUT ==> sending ack no. 1149
+2021-04-02 12:53:35,849 INFO     IN <== received packet num 1149
+2021-04-02 12:53:35,850 INFO     IO : 2241B written on file till now
+2021-04-02 12:53:35,853 INFO     OUT ==> sending ack no. 2241
