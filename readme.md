@@ -1,6 +1,6 @@
 # RDT for FTP over UDP
 
-* Reliable Data Transfer for transferring files using UDP *
+*Reliable Data Transfer for transferring files using UDP*
 
 ---
 
