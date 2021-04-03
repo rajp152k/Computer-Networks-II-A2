@@ -25,8 +25,8 @@ logging.info('receiver initiated')
 
 RECEIVER_ADDR = ('10.0.10.2', 8080)
 SENDER_ADDR = ('10.0.10.1', 9090)
-PACKET_SIZE = 2048
-BUFFER_SIZE = 20 * PACKET_SIZE
+PACKET_SIZE = 1024 * 5
+BUFFER_SIZE = 50 * PACKET_SIZE
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(RECEIVER_ADDR)

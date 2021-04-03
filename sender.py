@@ -16,7 +16,7 @@ parser.add_argument('-r', '--recvr_addr', default='10.0.10.2', type=str)
 parser.add_argument('-s', '--sendr_addr', default='10.0.10.1', type=str)
 parser.add_argument('--recvr_port', default=8080, type=int)
 parser.add_argument('--sendr_port', default=9090, type=int)
-parser.add_argument('-i', '--input', default='test-1MB', type=str)
+parser.add_argument('-i', '--input', default='CS3543_100MB', type=str)
 
 args = parser.parse_args()
 
@@ -32,8 +32,8 @@ logging.basicConfig(
     filemode='w')
 logging.info('sender initiated')
 
-TIMEOUT_INTERVAL = 1
-PACKET_SIZE = 1024
+TIMEOUT_INTERVAL = 0.03
+PACKET_SIZE = 1024 * 4
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(SENDER_ADDR)
@@ -191,7 +191,7 @@ def main_thread():
         else:
             if(str(recv_ack) in count.keys()):
                 count[str(recv_ack)] += 1
-                if count[str(recv_ack)] == 3:
+                if count[str(recv_ack)] == 4:
                     CONGESTION_STATE = FAST_RECOVERY
                     ssthresh = cwnd / 2
                     cwnd = ssthresh + 3 * MSS
