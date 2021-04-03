@@ -64,7 +64,8 @@ def send_ack(SYN_bit, FIN_bit):
 
 while True:
     try:
-        message, _ = sock.recvfrom(PACKET_SIZE)
+        message, address = sock.recvfrom(PACKET_SIZE)
+        SENDER_ADDR = address
     except KeyboardInterrupt:
         print(f'KeyboardInterrupt: terminating receiver')
         break
