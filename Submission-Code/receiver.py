@@ -11,8 +11,12 @@ from datetime import datetime
 parser = argparse.ArgumentParser(description='Receiver')
 
 parser.add_argument('-o', '--output', default='outfile', type=str)
+parser.add_argument('-r', '--recvr_addr', default='10.0.10.2', type=str)
+parser.add_argument('--recvr_port', default=8080, type=int)
 
 args = parser.parse_args()
+
+RECEIVER_ADDR = (args.recvr_addr, args.recvr_port)
 
 now = datetime.now().strftime("%d-%m-%Y__%H:%M:%S")
 (Path()/'receiver_logs').mkdir(exist_ok=True)
@@ -23,8 +27,6 @@ logging.basicConfig(
     filemode='w')
 logging.info('receiver initiated')
 
-RECEIVER_ADDR = ('10.0.10.2', 8080)
-SENDER_ADDR = ('10.0.10.1', 9090)
 PACKET_SIZE = 1024 * 5
 BUFFER_SIZE = 50 * PACKET_SIZE
 
